@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace relative="path" />;
   return <>{children}</>;
 }
 
@@ -23,7 +23,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/project-gallery">
         <Routes>
           <Route path="/" element={<PublicGallery />} />
           <Route path="/login" element={<Login />} />
