@@ -34,7 +34,7 @@ jobs:
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./
-          public_base_path: /
+          public_base_path: /https://github.com/Ross0907/project-gallery/
           destination: ./_site
           install_phase_node_env: dev
           build_phase_node_env: production
