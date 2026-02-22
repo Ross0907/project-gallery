@@ -18,5 +18,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: '/coderatul-portfolio/'
+  base: '/project-gallery/'
 }));
