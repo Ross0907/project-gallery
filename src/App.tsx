@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace relative="path" />;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
