@@ -28,9 +28,9 @@ jobs:
       - run: npm install
       - run: npm run build
 
-      # --- ADD THIS: create 404.html fallback ---
-      - name: Create SPA 404 fallback
-        run: cp dist/index.html dist/404.html
+      # # --- ADD THIS: create 404.html fallback ---
+      # - name: Create SPA 404 fallback
+      #   run: cp dist/index.html dist/404.html
 
       - uses: actions/configure-pages@v5
 
