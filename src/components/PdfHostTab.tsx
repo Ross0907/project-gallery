@@ -64,7 +64,7 @@ export default function PdfHostTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hosted_pdfs")
-        .select("*")
+        .select("id, title, storage_path, public_url, file_name, file_size, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as HostedPdf[];

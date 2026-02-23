@@ -121,8 +121,8 @@ export default function PublicGallery() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gallery_items")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("id, title, description, public_url, file_name, file_size, created_at, sort_order")
+        .order("sort_order", { ascending: true });
       if (error) throw error;
       return data as GalleryItem[];
     },
@@ -130,7 +130,7 @@ export default function PublicGallery() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <div className="max-w-[1600px] mx-auto px-4 py-16">
         <div className="mb-12">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Project Gallery
@@ -141,9 +141,9 @@ export default function PublicGallery() {
         </div>
 
         {isLoading ? (
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-48 rounded-xl bg-secondary animate-pulse break-inside-avoid" />
+              <div key={i} className="h-48 rounded-xl bg-secondary animate-pulse" />
             ))}
           </div>
         ) : items.length === 0 ? (
@@ -153,7 +153,7 @@ export default function PublicGallery() {
           </div>
         ) : (
           <>
-            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3">
               {items.map((item, index) => (
                 <div
                   key={item.id}

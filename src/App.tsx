@@ -11,16 +11,12 @@ import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
 
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
-// function ProtectedRoute({ children }: { children: React.ReactNode }) {
-//   const { user, loading } = useAuth();
-//   if (loading) return null;
-//   if (!user) return <Navigate to="/login" replace />;
-//   return <>{children}</>;
-// }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
