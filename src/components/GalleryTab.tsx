@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, ExternalLink, Trash2, ImageIcon, X, ZoomIn, Pencil, Check, ArrowUpDown, GripVertical, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import MasonryGrid from "@/components/MasonryGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -438,135 +439,139 @@ export default function GalleryTab() {
           <p>No images uploaded yet</p>
         </div>
       ) : (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3">
-          {displayItems.map((item, index) => (
-            <div
-              key={item.id}
-              className={`surface rounded-xl overflow-hidden group relative transition-all duration-200 break-inside-avoid ${
-                reorderMode
-                  ? "ring-2 ring-primary/20 cursor-grab active:cursor-grabbing"
-                  : "card-hover"
-              } ${dragOverIdx === index && reorderMode ? "ring-2 ring-primary scale-[1.02]" : ""}`}
-              draggable={reorderMode}
-              onDragStart={() => reorderMode && handleDragStart(index)}
-              onDragOver={(e) => reorderMode && handleDragOver(e, index)}
-              onDragEnd={() => reorderMode && handleDragEnd()}
-            >
-              {/* Reorder overlay */}
-              {reorderMode && (
-                <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between">
-                  <div className="bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1">
-                    <GripVertical className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-foreground">#{index + 1}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveItem(index, index - 1); }}
-                      disabled={index === 0}
-                      className="w-7 h-7 rounded-md bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveItem(index, index + 1); }}
-                      disabled={index === displayItems.length - 1}
-                      className="w-7 h-7 rounded-md bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Image — click to zoom */}
+        <MasonryGrid
+          itemCount={displayItems.length}
+          renderItem={(index) => {
+            const item = displayItems[index];
+            return (
               <div
-                className="overflow-hidden cursor-pointer relative"
-                onClick={() => !reorderMode && setLightboxIndex(index)}
+                key={item.id}
+                className={`surface rounded-xl overflow-hidden group relative transition-all duration-200 ${
+                  reorderMode
+                    ? "ring-2 ring-primary/20 cursor-grab active:cursor-grabbing"
+                    : "card-hover"
+                } ${dragOverIdx === index && reorderMode ? "ring-2 ring-primary scale-[1.02]" : ""}`}
+                draggable={reorderMode}
+                onDragStart={() => reorderMode && handleDragStart(index)}
+                onDragOver={(e) => reorderMode && handleDragOver(e, index)}
+                onDragEnd={() => reorderMode && handleDragEnd()}
               >
-                <img
-                  src={item.public_url}
-                  alt={item.title}
-                  className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
-                />
-                {!reorderMode && (
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center pointer-events-none">
-                    <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="px-3 py-2.5">
-                <p className="text-foreground font-medium text-sm truncate">{item.title}</p>
-
-                {!reorderMode && (
-                  <>
-                    {editingId === item.id ? (
-                      <div className="mt-1.5 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <Textarea
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          placeholder="Add a description..."
-                          className="text-xs min-h-[60px] bg-input border-border"
-                        />
-                        <button
-                          onClick={() => updateDescMutation.mutate({ id: item.id, description: editDesc })}
-                          className="shrink-0 text-primary hover:text-primary/80 transition-colors"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-1 mt-0.5">
-                        <p className="text-muted-foreground text-xs flex-1 line-clamp-2">
-                          {item.description || <span className="italic opacity-50">No description</span>}
-                        </p>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); startEditing(item); }}
-                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                      <a
-                        href={item.public_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-medium transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Open
-                      </a>
+                {/* Reorder overlay */}
+                {reorderMode && (
+                  <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between">
+                    <div className="bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1">
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-foreground">#{index + 1}</span>
+                    </div>
+                    <div className="flex gap-1">
                       <button
-                        onClick={() => triggerReplace(item)}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs transition-colors"
-                        disabled={replacingId === item.id}
+                        onClick={(e) => { e.stopPropagation(); moveItem(index, index - 1); }}
+                        disabled={index === 0}
+                        className="w-7 h-7 rounded-md bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${replacingId === item.id ? "animate-spin" : ""}`} />
-                        Replace
+                        <ArrowUp className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setDeleteTarget(item)}
-                        className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
+                        onClick={(e) => { e.stopPropagation(); moveItem(index, index + 1); }}
+                        disabled={index === displayItems.length - 1}
+                        className="w-7 h-7 rounded-md bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <ArrowDown className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
+
+                {/* Image — click to zoom */}
+                <div
+                  className="overflow-hidden cursor-pointer relative"
+                  onClick={() => !reorderMode && setLightboxIndex(index)}
+                >
+                  <img
+                    src={item.public_url}
+                    alt={item.title}
+                    className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
+                  />
+                  {!reorderMode && (
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center pointer-events-none">
+                      <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="px-3 py-2.5">
+                  <p className="text-foreground font-medium text-sm truncate">{item.title}</p>
+
+                  {!reorderMode && (
+                    <>
+                      {editingId === item.id ? (
+                        <div className="mt-1.5 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <Textarea
+                            value={editDesc}
+                            onChange={(e) => setEditDesc(e.target.value)}
+                            placeholder="Add a description..."
+                            className="text-xs min-h-[60px] bg-input border-border"
+                          />
+                          <button
+                            onClick={() => updateDescMutation.mutate({ id: item.id, description: editDesc })}
+                            className="shrink-0 text-primary hover:text-primary/80 transition-colors"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-1 mt-0.5">
+                          <p className="text-muted-foreground text-xs flex-1 line-clamp-2">
+                            {item.description || <span className="italic opacity-50">No description</span>}
+                          </p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startEditing(item); }}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={item.public_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-medium transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open
+                        </a>
+                        <button
+                          onClick={() => triggerReplace(item)}
+                          className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs transition-colors"
+                          disabled={replacingId === item.id}
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${replacingId === item.id ? "animate-spin" : ""}`} />
+                          Replace
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            );
+          }}
+        />
       )}
 
       {/* Lightbox with navigation */}

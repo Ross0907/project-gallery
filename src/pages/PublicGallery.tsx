@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, ExternalLink, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import MasonryGrid from "@/components/MasonryGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -153,29 +154,33 @@ export default function PublicGallery() {
           </div>
         ) : (
           <>
-            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3">
-              {items.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="surface rounded-xl overflow-hidden card-hover group cursor-pointer break-inside-avoid"
-                  onClick={() => setLightboxIndex(index)}
-                >
-                  <div className="overflow-hidden">
-                    <img
-                      src={item.public_url}
-                      alt={item.title}
-                      className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
-                    />
+            <MasonryGrid
+              itemCount={items.length}
+              renderItem={(index) => {
+                const item = items[index];
+                return (
+                  <div
+                    key={item.id}
+                    className="surface rounded-xl overflow-hidden card-hover group cursor-pointer"
+                    onClick={() => setLightboxIndex(index)}
+                  >
+                    <div className="overflow-hidden">
+                      <img
+                        src={item.public_url}
+                        alt={item.title}
+                        className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <p className="text-foreground font-medium text-sm truncate">{item.title}</p>
+                      {item.description && (
+                        <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{item.description}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="px-3 py-2.5">
-                    <p className="text-foreground font-medium text-sm truncate">{item.title}</p>
-                    {item.description && (
-                      <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{item.description}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                );
+              }}
+            />
             <p className="text-muted-foreground text-xs mt-8">
               Click any image to enlarge — use arrow keys or buttons to navigate.
             </p>
