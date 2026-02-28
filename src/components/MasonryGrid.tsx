@@ -1,45 +1,53 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 
 interface MasonryGridProps {
   /** Total item count */
   itemCount: number;
   /** Render a single item by its original index */
   renderItem: (index: number) => React.ReactNode;
-  /** Responsive column counts: [sm, md, lg, xl] — defaults to [1,2,3,4,5] */
+  /** Responsive column counts: [base, sm, md, lg, xl] */
   columns?: number[];
 }
 
 /**
- * JS-based masonry that distributes items **row-wise** (round-robin)
+ * JS-based masonry that distributes items row-wise (round-robin)
  * across columns, so lightbox prev/next follows left→right, top→bottom order.
- * Each column is a vertical flex container preserving natural aspect ratios.
  */
 export default function MasonryGrid({ itemCount, renderItem, columns = [1, 2, 3, 4, 5] }: MasonryGridProps) {
-  // We render ALL column counts and hide via CSS breakpoints
-  const layouts = useMemo(() => {
-    return columns.map((colCount) => {
-      const cols: number[][] = Array.from({ length: colCount }, () => []);
-      for (let i = 0; i < itemCount; i++) {
-        cols[i % colCount].push(i);
-      }
-      return cols;
-    });
-  }, [itemCount, columns]);
+  const [columnCount, setColumnCount] = useState(columns[0] ?? 1);
 
-  // Breakpoint classes for each layout: index 0=base, 1=sm, 2=md, 3=lg, 4=xl
-  const breakpoints = ["flex sm:hidden", "hidden sm:flex md:hidden", "hidden md:flex lg:hidden", "hidden lg:flex xl:hidden", "hidden xl:flex"];
+  useEffect(() => {
+    const resolveColumns = () => {
+      const w = window.innerWidth;
+      if (w >= 1280) return columns[4] ?? columns[columns.length - 1] ?? 1;
+      if (w >= 1024) return columns[3] ?? columns[columns.length - 1] ?? 1;
+      if (w >= 768) return columns[2] ?? columns[columns.length - 1] ?? 1;
+      if (w >= 640) return columns[1] ?? columns[columns.length - 1] ?? 1;
+      return columns[0] ?? 1;
+    };
+
+    const update = () => setColumnCount(Math.max(1, resolveColumns()));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [columns]);
+
+  const cols = useMemo(() => {
+    const grid: number[][] = Array.from({ length: columnCount }, () => []);
+    for (let i = 0; i < itemCount; i++) {
+      grid[i % columnCount].push(i);
+    }
+    return grid;
+  }, [itemCount, columnCount]);
 
   return (
-    <>
-      {layouts.map((cols, layoutIdx) => (
-        <div key={layoutIdx} className={`${breakpoints[layoutIdx]} gap-3`}>
-          {cols.map((colItems, colIdx) => (
-            <div key={colIdx} className="flex-1 flex flex-col gap-3">
-              {colItems.map((itemIdx) => renderItem(itemIdx))}
-            </div>
-          ))}
+    <div className="flex w-full min-w-0 gap-3 overflow-x-hidden">
+      {cols.map((colItems, colIdx) => (
+        <div key={colIdx} className="flex min-w-0 flex-1 flex-col gap-3">
+          {colItems.map((itemIdx) => renderItem(itemIdx))}
         </div>
       ))}
-    </>
+    </div>
   );
 }
+

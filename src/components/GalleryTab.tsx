@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, ExternalLink, Trash2, ImageIcon, X, ZoomIn, Pencil, Check, ArrowUpDown, GripVertical, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Upload, ExternalLink, Trash2, ImageIcon, X, ZoomIn, ZoomOut, Pencil, Check, ArrowUpDown, GripVertical, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Type } from "lucide-react";
 import MasonryGrid from "@/components/MasonryGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,12 +44,18 @@ function AdminLightbox({
   const item = items[currentIndex];
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < items.length - 1;
+  const [zoom, setZoom] = useState(1);
+  const lastDistRef = useRef<number | null>(null);
+
+  useEffect(() => { setZoom(1); }, [currentIndex]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft" && hasPrev) onNavigate(currentIndex - 1);
       if (e.key === "ArrowRight" && hasNext) onNavigate(currentIndex + 1);
+      if (e.key === "+" || e.key === "=") setZoom((z) => Math.min(z + 0.25, 4));
+      if (e.key === "-") setZoom((z) => Math.max(z - 0.25, 0.5));
     },
     [currentIndex, hasPrev, hasNext, onClose, onNavigate]
   );
@@ -59,58 +65,124 @@ function AdminLightbox({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastDistRef.current = Math.hypot(dx, dy);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastDistRef.current !== null) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const scale = dist / lastDistRef.current;
+      setZoom((z) => Math.min(Math.max(z * scale, 0.5), 4));
+      lastDistRef.current = dist;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => { lastDistRef.current = null; }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom((z) => Math.min(Math.max(z + delta, 0.5), 4));
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/95 z-50 flex flex-col" onClick={onClose}>
       <button
-        className="absolute top-5 right-5 text-white/60 hover:text-white transition-colors z-10"
+        className="absolute top-3 right-3 sm:top-5 sm:right-5 text-white/60 hover:text-white transition-colors z-10"
         onClick={onClose}
       >
-        <X className="w-7 h-7" />
+        <X className="w-6 h-6 sm:w-7 sm:h-7" />
       </button>
 
-      <div className="flex-1 flex items-center justify-center px-16 pt-6 pb-2 min-h-0">
+      <div
+        className="flex-1 flex items-center justify-center px-10 sm:px-16 pt-4 sm:pt-6 pb-2 min-h-0 overflow-auto touch-none"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+      >
         {hasPrev && (
           <button
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
             onClick={(e) => { e.stopPropagation(); onNavigate(currentIndex - 1); }}
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
 
         <img
           src={item.public_url}
           alt={item.title}
-          className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+          className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl transition-transform duration-200 select-none"
+          style={{ transform: `scale(${zoom})` }}
+          draggable={false}
           onClick={(e) => e.stopPropagation()}
         />
 
         {hasNext && (
           <button
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
             onClick={(e) => { e.stopPropagation(); onNavigate(currentIndex + 1); }}
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
       </div>
 
-      <div className="shrink-0 px-6 py-4 flex flex-col items-center gap-1 text-center" onClick={(e) => e.stopPropagation()}>
-        <p className="text-white font-medium text-sm">{item.title}</p>
-        {item.description && (
-          <p className="text-white/60 text-xs max-w-lg">{item.description}</p>
+      {/* Zoom controls */}
+      <div className="absolute bottom-28 sm:bottom-24 right-3 sm:right-6 flex flex-col gap-2 z-10">
+        <button
+          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          onClick={(e) => { e.stopPropagation(); setZoom((z) => Math.min(z + 0.25, 4)); }}
+          title="Zoom in (+)"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button
+          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          onClick={(e) => { e.stopPropagation(); setZoom((z) => Math.max(z - 0.25, 0.5)); }}
+          title="Zoom out (-)"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        {zoom !== 1 && (
+          <button
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setZoom(1); }}
+            title="Reset zoom"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         )}
-        <div className="flex items-center gap-4 mt-2">
-          <span className="text-white/40 text-xs">
+        {zoom !== 1 && (
+          <span className="text-white/50 text-[10px] text-center">{Math.round(zoom * 100)}%</span>
+        )}
+      </div>
+
+      <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 flex flex-col items-center gap-1 text-center" onClick={(e) => e.stopPropagation()}>
+        <p className="text-white font-medium text-xs sm:text-sm">{item.title}</p>
+        {item.description && (
+          <p className="text-white/60 text-[10px] sm:text-xs max-w-lg">{item.description}</p>
+        )}
+        <div className="flex items-center gap-4 mt-1 sm:mt-2">
+          <span className="text-white/40 text-[10px] sm:text-xs">
             {currentIndex + 1} / {items.length}
           </span>
           <a
             href={item.public_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-primary text-xs font-medium hover:text-primary/80 transition-colors"
+            className="flex items-center gap-1.5 text-primary text-[10px] sm:text-xs font-medium hover:text-primary/80 transition-colors"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Open image
           </a>
         </div>
@@ -126,12 +198,15 @@ export default function GalleryTab() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDesc, setEditDesc] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<GalleryItem | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderItems, setReorderItems] = useState<GalleryItem[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
+  const [jumpInputs, setJumpInputs] = useState<Record<number, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -175,6 +250,20 @@ export default function GalleryTab() {
     onError: () => toast.error("Failed to update description"),
   });
 
+  const renameMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await supabase.from("gallery_items").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-items"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-items-public"] });
+      toast.success("Title updated");
+      setRenamingId(null);
+    },
+    onError: () => toast.error("Failed to rename"),
+  });
+
   const saveOrderMutation = useMutation({
     mutationFn: async (orderedItems: GalleryItem[]) => {
       const updates = orderedItems.map((item, index) =>
@@ -194,90 +283,49 @@ export default function GalleryTab() {
   });
 
   const replaceImage = async (item: GalleryItem, file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large. Maximum size is 10MB");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("File too large. Maximum size is 10MB"); return; }
     setReplacingId(item.id);
     try {
-      // Remove old file
       await supabase.storage.from("gallery-images").remove([item.storage_path]);
-
-      // Upload new file
       const ext = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("gallery-images")
-        .upload(fileName, file, { contentType: file.type });
+      const { error: uploadError } = await supabase.storage.from("gallery-images").upload(fileName, file, { contentType: file.type });
       if (uploadError) throw uploadError;
-
       const { data: urlData } = supabase.storage.from("gallery-images").getPublicUrl(fileName);
-
       const { error: dbError } = await supabase.from("gallery_items").update({
-        storage_path: fileName,
-        public_url: urlData.publicUrl,
-        file_name: file.name,
-        file_size: file.size,
+        storage_path: fileName, public_url: urlData.publicUrl, file_name: file.name, file_size: file.size,
       }).eq("id", item.id);
       if (dbError) throw dbError;
-
       queryClient.invalidateQueries({ queryKey: ["gallery-items"] });
       queryClient.invalidateQueries({ queryKey: ["gallery-items-public"] });
       toast.success("Image replaced successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to replace image");
-    } finally {
-      setReplacingId(null);
-    }
+    } catch (err) { console.error(err); toast.error("Failed to replace image"); }
+    finally { setReplacingId(null); }
   };
 
   const uploadFile = async (file: File, title: string) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large. Maximum size is 10MB");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("File too large. Maximum size is 10MB"); return; }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("gallery-images")
-        .upload(fileName, file, { contentType: file.type });
+      const { error: uploadError } = await supabase.storage.from("gallery-images").upload(fileName, file, { contentType: file.type });
       if (uploadError) throw uploadError;
-
       const { data: urlData } = supabase.storage.from("gallery-images").getPublicUrl(fileName);
       const { data: { user } } = await supabase.auth.getUser();
       const { error: dbError } = await supabase.from("gallery_items").insert({
         title: title || file.name.replace(/\.[^/.]+$/, ""),
-        storage_path: fileName,
-        public_url: urlData.publicUrl,
-        file_name: file.name,
-        file_size: file.size,
-        user_id: user?.id,
-        sort_order: 0,
+        storage_path: fileName, public_url: urlData.publicUrl, file_name: file.name,
+        file_size: file.size, user_id: user?.id, sort_order: 0,
       });
       if (dbError) throw dbError;
-
       queryClient.invalidateQueries({ queryKey: ["gallery-items"] });
       toast.success("Image uploaded successfully!");
       setCustomTitle("");
-    } catch (err) {
-      console.error(err);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    } catch (err) { console.error(err); toast.error("Upload failed"); }
+    finally { setUploading(false); }
   };
 
   const handleFiles = (files: FileList | null) => {
@@ -286,30 +334,15 @@ export default function GalleryTab() {
   };
 
   const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragging(false);
-      handleFiles(e.dataTransfer.files);
-    },
+    (e: React.DragEvent) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); },
     [customTitle]
   );
 
-  const startEditing = (item: GalleryItem) => {
-    setEditingId(item.id);
-    setEditDesc(item.description || "");
-  };
+  const startEditing = (item: GalleryItem) => { setEditingId(item.id); setEditDesc(item.description || ""); };
+  const startRenaming = (item: GalleryItem) => { setRenamingId(item.id); setRenameTitle(item.title); };
 
-  const enterReorderMode = () => {
-    setReorderItems([...items]);
-    setReorderMode(true);
-  };
-
-  const cancelReorder = () => {
-    setReorderMode(false);
-    setReorderItems([]);
-    setDragIdx(null);
-    setDragOverIdx(null);
-  };
+  const enterReorderMode = () => { setReorderItems([...items]); setJumpInputs({}); setReorderMode(true); };
+  const cancelReorder = () => { setReorderMode(false); setReorderItems([]); setDragIdx(null); setDragOverIdx(null); setJumpInputs({}); };
 
   const moveItem = (from: number, to: number) => {
     if (to < 0 || to >= reorderItems.length) return;
@@ -319,22 +352,24 @@ export default function GalleryTab() {
     setReorderItems(updated);
   };
 
-  const handleDragStart = (index: number) => setDragIdx(index);
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIdx(index);
+  const jumpToPosition = (fromIndex: number, targetPos: number) => {
+    if (targetPos < 1 || targetPos > reorderItems.length || targetPos === fromIndex + 1) return;
+    const updated = [...reorderItems];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(targetPos - 1, 0, moved);
+    setReorderItems(updated);
+    setJumpInputs({});
   };
+
+  const handleDragStart = (index: number) => setDragIdx(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); setDragOverIdx(index); };
   const handleDragEnd = () => {
-    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
-      moveItem(dragIdx, dragOverIdx);
-    }
-    setDragIdx(null);
-    setDragOverIdx(null);
+    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) moveItem(dragIdx, dragOverIdx);
+    setDragIdx(null); setDragOverIdx(null);
   };
 
   const displayItems = reorderMode ? reorderItems : items;
 
-  // Hidden input for replace
   const handleReplaceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const item = items.find((i) => i.id === replacingId);
@@ -349,14 +384,7 @@ export default function GalleryTab() {
 
   return (
     <div className="space-y-8">
-      {/* Hidden replace input */}
-      <input
-        ref={replaceInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleReplaceFile}
-      />
+      <input ref={replaceInputRef} type="file" accept="image/*" className="hidden" onChange={handleReplaceFile} />
 
       {/* Upload Zone */}
       {!reorderMode && (
@@ -374,13 +402,7 @@ export default function GalleryTab() {
             onDragLeave={() => setDragging(false)}
             onClick={() => fileInputRef.current?.click()}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                 {uploading ? (
@@ -390,9 +412,7 @@ export default function GalleryTab() {
                 )}
               </div>
               <div>
-                <p className="text-foreground font-medium">
-                  {uploading ? "Uploading..." : "Drop an image here or click to browse"}
-                </p>
+                <p className="text-foreground font-medium">{uploading ? "Uploading..." : "Drop an image here or click to browse"}</p>
                 <p className="text-muted-foreground text-sm mt-1">PNG, JPG, GIF, WEBP, SVG supported</p>
               </div>
             </div>
@@ -414,7 +434,7 @@ export default function GalleryTab() {
                 Cancel
               </Button>
               <span className="text-muted-foreground text-xs ml-2">
-                Drag tiles or use arrows to reorder.
+                Drag tiles, use arrows, or type a # to reorder.
               </span>
             </>
           ) : (
@@ -426,9 +446,9 @@ export default function GalleryTab() {
         </div>
       )}
 
-      {/* Gallery Grid — matches public view layout */}
+      {/* Gallery Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-48 rounded-xl bg-secondary animate-pulse" />
           ))}
@@ -463,7 +483,25 @@ export default function GalleryTab() {
                       <GripVertical className="w-4 h-4 text-muted-foreground" />
                       <span className="text-xs font-medium text-foreground">#{index + 1}</span>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
+                      {/* Jump-to input */}
+                      <input
+                        type="number"
+                        min={1}
+                        max={reorderItems.length}
+                        placeholder="#"
+                        value={jumpInputs[index] ?? ""}
+                        onChange={(e) => setJumpInputs((prev) => ({ ...prev, [index]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const val = parseInt(jumpInputs[index] || "", 10);
+                            if (!isNaN(val)) jumpToPosition(index, val);
+                          }
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-10 h-7 rounded-md bg-background/80 backdrop-blur-sm text-center text-xs text-foreground border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
                       <button
                         onClick={(e) => { e.stopPropagation(); moveItem(index, index - 1); }}
                         disabled={index === 0}
@@ -501,7 +539,43 @@ export default function GalleryTab() {
 
                 {/* Info */}
                 <div className="px-3 py-2.5">
-                  <p className="text-foreground font-medium text-sm truncate">{item.title}</p>
+                  {/* Title — with rename */}
+                  {!reorderMode && renamingId === item.id ? (
+                    <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        value={renameTitle}
+                        onChange={(e) => setRenameTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && renameTitle.trim()) renameMutation.mutate({ id: item.id, title: renameTitle.trim() });
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        className="h-7 text-sm bg-input border-border"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => renameTitle.trim() && renameMutation.mutate({ id: item.id, title: renameTitle.trim() })}
+                        className="shrink-0 text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setRenamingId(null)} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <p className="text-foreground font-medium text-sm truncate flex-1">{item.title}</p>
+                      {!reorderMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startRenaming(item); }}
+                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                          title="Rename"
+                        >
+                          <Type className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {!reorderMode && (
                     <>
@@ -519,10 +593,7 @@ export default function GalleryTab() {
                           >
                             <Check className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                          >
+                          <button onClick={() => setEditingId(null)} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
                             <X className="w-4 h-4" />
                           </button>
                         </div>
@@ -574,7 +645,7 @@ export default function GalleryTab() {
         />
       )}
 
-      {/* Lightbox with navigation */}
+      {/* Lightbox */}
       {lightboxIndex !== null && (
         <AdminLightbox
           items={displayItems}
@@ -597,10 +668,7 @@ export default function GalleryTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deleteTarget) deleteMutation.mutate(deleteTarget);
-                setDeleteTarget(null);
-              }}
+              onClick={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
             >
               Delete
             </AlertDialogAction>

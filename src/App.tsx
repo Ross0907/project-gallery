@@ -23,7 +23,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename="/project-gallery">
+      <BrowserRouter basename="/project-gallery/">
         <Routes>
           <Route path="/" element={<PublicGallery />} />
           <Route path="/login" element={<Login />} />
