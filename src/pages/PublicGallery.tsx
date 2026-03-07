@@ -98,7 +98,7 @@ function Lightbox({
 
       {/* Image area */}
       <div
-        className="flex-1 flex items-center justify-center px-10 sm:px-16 pt-4 sm:pt-6 pb-2 min-h-0 overflow-auto touch-none"
+        className="flex-1 flex items-center justify-center px-10 sm:px-16 pt-4 sm:pt-6 pb-2 min-h-0 overflow-hidden touch-none"
         ref={imgRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

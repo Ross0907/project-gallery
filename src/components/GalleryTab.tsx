@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, ExternalLink, Trash2, ImageIcon, X, ZoomIn, ZoomOut, Pencil, Check, ArrowUpDown, GripVertical, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Type } from "lucide-react";
+import { Upload, ExternalLink, Trash2, ImageIcon, X, ZoomIn, ZoomOut, Pencil, Check, ArrowUpDown, GripVertical, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Type, Crop } from "lucide-react";
+import CropResizeDialog from "@/components/CropResizeDialog";
 import MasonryGrid from "@/components/MasonryGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -103,7 +104,7 @@ function AdminLightbox({
       </button>
 
       <div
-        className="flex-1 flex items-center justify-center px-10 sm:px-16 pt-4 sm:pt-6 pb-2 min-h-0 overflow-auto touch-none"
+        className="flex-1 flex items-center justify-center px-10 sm:px-16 pt-4 sm:pt-6 pb-2 min-h-0 overflow-hidden touch-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -207,6 +208,8 @@ export default function GalleryTab() {
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
   const [jumpInputs, setJumpInputs] = useState<Record<number, string>>({});
+  const [cropItem, setCropItem] = useState<GalleryItem | null>(null);
+  const [cropSaving, setCropSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -380,6 +383,29 @@ export default function GalleryTab() {
   const triggerReplace = (item: GalleryItem) => {
     setReplacingId(item.id);
     setTimeout(() => replaceInputRef.current?.click(), 0);
+  };
+
+  const handleCropSave = async (blob: Blob) => {
+    if (!cropItem) return;
+    setCropSaving(true);
+    try {
+      await supabase.storage.from("gallery-images").remove([cropItem.storage_path]);
+      const ext = "png";
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      const { error: uploadError } = await supabase.storage.from("gallery-images").upload(fileName, file, { contentType: "image/png" });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("gallery-images").getPublicUrl(fileName);
+      const { error: dbError } = await supabase.from("gallery_items").update({
+        storage_path: fileName, public_url: urlData.publicUrl, file_name: fileName, file_size: blob.size,
+      }).eq("id", cropItem.id);
+      if (dbError) throw dbError;
+      queryClient.invalidateQueries({ queryKey: ["gallery-items"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-items-public"] });
+      toast.success("Image updated!");
+      setCropItem(null);
+    } catch (err) { console.error(err); toast.error("Failed to save cropped image"); }
+    finally { setCropSaving(false); }
   };
 
   return (
@@ -630,6 +656,13 @@ export default function GalleryTab() {
                           Replace
                         </button>
                         <button
+                          onClick={() => setCropItem(item)}
+                          className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs transition-colors"
+                        >
+                          <Crop className="w-3.5 h-3.5" />
+                          Resize
+                        </button>
+                        <button
                           onClick={() => setDeleteTarget(item)}
                           className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
                         >
@@ -675,6 +708,17 @@ export default function GalleryTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Crop/Resize Dialog */}
+      {cropItem && (
+        <CropResizeDialog
+          open={!!cropItem}
+          onClose={() => setCropItem(null)}
+          imageUrl={cropItem.public_url}
+          onSave={handleCropSave}
+          saving={cropSaving}
+        />
+      )}
     </div>
   );
 }
