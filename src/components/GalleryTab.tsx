@@ -66,6 +66,25 @@ function AdminLightbox({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    const bodyOverflow = document.body.style.overflow;
+    const bodyOverscroll = document.body.style.overscrollBehavior;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const htmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.body.style.overscrollBehavior = bodyOverscroll;
+      document.documentElement.style.overflow = htmlOverflow;
+      document.documentElement.style.overscrollBehavior = htmlOverscroll;
+    };
+  }, []);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -89,13 +108,18 @@ function AdminLightbox({
   const handleTouchEnd = useCallback(() => { lastDistRef.current = null; }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom((z) => Math.min(Math.max(z + delta, 0.5), 4));
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-50 flex flex-col" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/95 z-50 flex flex-col overscroll-none"
+      onClick={onClose}
+      onWheelCapture={(e) => e.preventDefault()}
+    >
       <button
         className="absolute top-3 right-3 sm:top-5 sm:right-5 text-white/60 hover:text-white transition-colors z-10"
         onClick={onClose}

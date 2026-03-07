@@ -51,6 +51,25 @@ function Lightbox({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    const bodyOverflow = document.body.style.overflow;
+    const bodyOverscroll = document.body.style.overscrollBehavior;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const htmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.body.style.overscrollBehavior = bodyOverscroll;
+      document.documentElement.style.overflow = htmlOverflow;
+      document.documentElement.style.overscrollBehavior = htmlOverscroll;
+    };
+  }, []);
+
   // Pinch-to-zoom
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
@@ -78,6 +97,7 @@ function Lightbox({
 
   // Mouse wheel zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom((z) => Math.min(Math.max(z + delta, 0.5), 4));
@@ -85,8 +105,9 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 bg-black/95 z-50 flex flex-col"
+      className="fixed inset-0 bg-black/95 z-50 flex flex-col overscroll-none"
       onClick={onClose}
+      onWheelCapture={(e) => e.preventDefault()}
     >
       {/* Close */}
       <button
