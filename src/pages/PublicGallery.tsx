@@ -268,6 +268,7 @@ export default function PublicGallery() {
                       <img
                         src={item.public_url}
                         alt={item.title}
+                        loading="lazy"
                         className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
                       />
                     </div>
